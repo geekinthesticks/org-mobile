@@ -1,0 +1,788 @@
+:SETUP:
+#+STYLE: <?php
+#+STYLE: include_once("../css/mobile.php");
+#+STYLE: include_once("../css/style_selector.php");
+#+STYLE: ?>
+#+SETUPFILE: ~/.emacs-lisp/org-templates/org-mobile.org
+#+TITLE: Using org with Mobile Devices.
+#+STARTUP: overview indent
+#+TAGS: nokia(n)
+#+STARTUP: hidestars
+#+AUTHOR: Ian Barton.
+#+INFOJS_OPT: view:content ltoc:nil toc:t ftoc:t
+#+OPTIONS: H:3 num:nil tags:nil toc:1 timestamps:t
+#+LINK_UP: index.html
+#+LINK_HOME: ../index.html
+#+DRAWERS: PHP XML
+:END:
+
+* Introduction.
+
+This tutorial is aimed at helping you to use org documents on mobile
+phones. Since most smart phones can't run Emacs this tutorial will
+focus on viewing your org files on your smartphone. 
+
+Whilst most phones can't edit org files directly, there are some
+workarounds available. It is possible to use instant messaging, email, sms, etc to
+send data to a web service. These web services can create an rss feed from
+your data which you can import into your org files.
+
+However, there are a methods available to view org files on your
+mobile device. Many smart phones have web browsers, which can be used
+to view org files published as html, either remotely, or on the device itself.
+
+* Publishing Your org Files as html.
+
+Most smart phones have browsers, so you can view org files published
+on your web server, or by copying the files to your smart phone.
+
+Sebastien Rose has already written an excellent [[http://orgmode.org/worg/org-tutorials/org-publish-html-tutorial.php][tutorial]] on publishing
+org files to html. I am going to describe some tweaks to publishing
+that make your html more readable on the relatively small screen of
+the average smartphone.
+
+** Customizing org's html Export for Mobile Devices.
+   The goal is to try and customize the output so that it looks good
+   on both desktop browsers and mobile devices. Mobile devices usually
+   have small two to three inch screens and much lower resolution than
+   a desktop monitor. Web page designs that have more than one column
+   don't look good and are hard to navigate on mobile devices.
+
+   One approach is to design two completely separate sites for desktop
+   and mobile use. However, for the lazy amongst us, there is a much
+   better approach. You can almost completely change your site's
+   appearance by changing it's style sheet. So the problem boils down
+   to "How do we serve different style sheets for desktop and mobile
+   browsers?".
+
+   There are a number of ways to achieve this goal. Rather than
+   re-inventing the wheel I am using some php, which comes from
+   MythTV's MythWeb browser application. It looks at the browser
+   string and decides if it's a mobile, or a desktop browser. The
+   detection strings can easily be customized, so if it doesn't work
+   with your mobile browser it should be easy to fix. The library has
+   a isMobileUser() function, which returns true if it thinks you are
+   using a mobile browser. Another very simple bit of php in the
+   document header serves different style sheets depending on the
+   Result of isMobileUser.
+
+** The Basic Structure of a Published org Page.
+
+In order to customize the appearance of a generated page, we need to
+have an overview of how org generates the html for the page. Depending
+on what export options you have set, the structure of the page can
+vary greatly. However, the simplest possible page looks something like:
+
+#+BEGIN_EXAMPLE
+    <html>
+    <head>
+
+    </head>
+    <body>
+        <div id="content">
+
+
+            <div id="postamble">
+
+
+            </div>
+       </div>
+    </body>
+
+    </html>
+#+END_EXAMPLE
+
+** Using mobile.php and style-selector.php.
+
+*** mobile.php
+
+    :PHP:
+#+BEGIN_EXAMPLE
+
+<?php
+/**
+ * Copyright (C) 2005 Jerome Rannikko <jeromer@hotpop.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or (at
+ * your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *
+ * This file contains functions to detect mobile user agents and to get
+ * information about their screen sizes. This information enables the
+ * development of very detailed themes/layouts for mobile devices. This
+ * code is intented to be easily re-usable in different applications.
+ *
+ * @url         $URL: http://svn.mythtv.org/svn/branches/release-0-21-fixes/mythplugins/mythweb/includes/mobile.php $
+ * @date        $Date: 2008-02-10 08:57:23 +0000 (Sun, 10 Feb 2008) $
+ * @version     $Revision: 15885 $
+ * @author      $Author: kormoc $
+ * @license     GPL
+ *
+ * @package     MythWeb
+/**/
+
+
+/**
+ * Return true if the user agent is mobile device. Otherwise return false.
+ * The user agent is determined based on the return value of getScreenSize()
+ * which is false if the user agent is not a mobile device.
+ *
+ * @return true or false
+ */
+function isMobileUser() {
+  return (getScreenSize() === false) ? false : true;
+}
+
+
+/**
+ * Return the screen size of the mobile user agent. This can be used to do very
+ * detailed modifications to the web site's layout for the mobile user agents.
+ * If the user is not regocnized to be a mobile device then return false. If the
+ * user is a known mobile device but the screen size is unknown then return
+ * an empty array. Mobile users are detected based on $_SERVER['HTTP_USER_AGENT']
+ * and a list of known mobile user agent identification strings.
+ *
+ * @return array(width, height) or false
+ */
+function getScreenSize() {
+  static $isChecked = false;
+  static $screen = false;
+
+  if (!$isChecked) {
+    /*
+     * The $mobiles array contains a list of known mobile phone user agent
+     * identification strings. Each key of the array is a substring of the
+     * actual UA string and the corresponding value is an array that stores
+     * the width and the height of the mobile device's screen size.
+     *
+     * If you want to add more mobile phone models just add new lines following
+     * the same structure than in the existing ones. The more specific substring
+     * you use to match the UA string, the higher up in the list it should be.
+     * If it's very generic then add it at the end of the array.
+     *
+     * If you don't know the screensize of some mobile terminal then use
+     * an empty array or approximate dimensions.
+     */
+    $mobiles = array(
+                /* Phones using the Series 60 platform, e.g. Nokia 3650 and 6600. */
+                    'Series 60'  => array('width' => 176, 'height' => 208),
+                    'Series60'   => array('width' => 176, 'height' => 208),
+                    'C500'       => array('width'=>176, 'height'=> 220), // SPV C500
+                /* Phones using the Series 90 platform, e.g. Nokia 7710. */
+                    'Series 90'  => array('width' => 640, 'height' => 320),
+                    'Series90'   => array('width' => 640, 'height' => 320),
+                /* HTC Tornado */
+                    '176x220'    => array('width' => 176, 'height' => 220),
+                /* The following strings are added for the Palm browser WebPro
+                 * WebPro sometimes supplies the screen dimensions, but sometimes not
+                /* but we try to detect the best as possible */
+                    '240x320'    => array('width' => 240, 'height' => 320), // PocketPC IE
+                    '320x320'    => array('width' => 320, 'height' => 320), // For all Palm Tungsten models
+                    '320x480'    => array('width' => 320, 'height' => 480), // For Palm Tungsten T
+                    '480x320'    => array('width' => 480, 'height' => 320), // For Palm Tungsten T
+                    '320x480x16' => array('width' => 320, 'height' => 480), // For Palm Tungsten T
+                    '480x320x16' => array('width' => 480, 'height' => 320), // For Palm Tungsten T
+                    '320x320x16' => array('width' => 320, 'height' => 320),
+                    'WebPro'     => array('width' => 320, 'height' => 320), // For all Palm Tungsten models
+
+                /* Opera for mobile devices. */
+                    'Opera Mini' => array(),
+
+                /* Minimo - Mozilla Firefox mobile browser */
+                    'Minimo'     => array(),
+
+                /* A generic mobile phone using Symbian OS. All Symbian phones don't
+                 * necessarily have the same screen size so if you want to include
+                /* some specific Symbian phones then place them above this line. */
+                    'Symbian'    => array('width' => 176, 'height' => 208),
+
+                /* A generic entry for Windows Mobile 5 and possible other
+                 * Windows Mobile and CE versions.  Several browsers all sent this
+                /* in their connection strings. */
+                    'Windows CE' => array(),
+
+                /* Lots of other random mobile browsers */
+                    'Nokia' => array(), // Nokia phones and emulators
+                    'Eric'  => array(), // Ericsson WAP phones and emulators
+                    'WapI'  => array(), // Ericsson WapIDE 2.0
+                    'MC21'  => array(), // Ericsson MC218
+                    'AUR '  => array(), // Ericsson R320
+                    'R380'  => array(), // Ericsson R380
+                    'UP.B'  => array(), // UP.Browser
+                    'WinW'  => array(), // WinWAP browser
+                    'UPG1'  => array(), // UP.SDK 4.0
+                    'upsi'  => array(), // another kind of UP.Browser ??
+                    'QWAP'  => array(), // unknown QWAPPER browser
+                    'Jigs'  => array(), // unknown JigSaw browser
+                    'Java'  => array(), // unknown Java based browser
+                    'Alca'  => array(), // unknown Alcatel-BE3 browser (UP based?)
+                    'MITS'  => array(), // unknown Mitsubishi browser
+                    'MOT-'  => array(), // unknown browser (UP based?)
+                    'My S'  => array(), // unknown Ericsson devkit browser ?
+                    'WAPJ'  => array(), // Virtual WAPJAG www.wapjag.de
+                    'fetc'  => array(), // fetchpage.cgi Perl script from www.wapcab.de
+                    'ALAV'  => array(), // yet another unknown UP based browser ?
+                    'Wapa'  => array(), // another unknown browser (Web based "Wapalyzer"?)
+                    'LGE-'  => array(), // LG phones
+
+                 /* For debugging: you can try out the mobile mode without a mobile phone.
+                  * Replace 'Opera' with your browser. Comment out for release version. */
+                     //'Opera' => array('width' => 176, 'height' => 208)
+             );
+
+    /* Scan through $mobiles and try to find matching user agent. */
+    foreach (array_keys($mobiles) as $needle) {
+      /* Check if user agent matches this screen size key. */
+      if (strpos($_SERVER['HTTP_USER_AGENT'], $needle) !== false) {
+        $screen = $mobiles[$needle];
+        break;
+      }
+    }
+
+// If the user agent was not in our list, check if the terminal accepts WAP.
+    if ($screen === false) {
+      if (browserAcceptsMediaType(array('WAP'))) {
+        $screen = array();
+      }
+    }
+
+    $isChecked = true;
+  }
+  return $screen;
+}
+
+
+/**
+ * Check if the browser accepts any of the media types given in the parameter array.
+ * The media types can be either in the form of 'text/html' or just 'html'. All parameter
+ * values are turned upper case.
+ *
+ * @return true if the browser accepts any of the media types, false if none,
+ * and null if $mediaTypes is not an array
+ */
+function browserAcceptsMediaType($mediaTypes) {
+  if (!is_array($mediaTypes)) {
+    return null;
+  }
+
+  $mediaTypes = strtoupper(implode('|', $mediaTypes));
+  return preg_match("#$mediaTypes#", strtoupper($_SERVER['HTTP_ACCEPT'])) ? true : false;
+}
+
+
+/**
+ * Return the width of the screen in pixels. Meant to be called if isMobileUser()
+ * returns true. See also getScreensize().
+ *
+ * @return width of the screen in pixels if known or null
+ */
+function getScreenWidth() {
+  $screen = getScreenSize();
+  return isset($screen['width']) ? $screen['width'] : null;
+}
+
+
+/**
+ * Return the height of the screen in pixels. Meant to be called if isMobileUser()
+ * returns true. See also getScreensize().
+ *
+ * @return height of the screen in pixels
+ */
+function getScreenHeight() {
+  $screen = getScreenSize();
+  return isset($screen['height']) ? $screen['height'] : null;
+}
+
+#+END_EXAMPLE
+:END:
+
+By default org exports html in xhtml format, so you need to configure
+org to export your files with a .php suffix. You can do this on a per
+export project basis in the org-publish-project-alist variable by
+setting the html-extension option:
+
+#+BEGIN_SRC emacs-lisp
+  (require 'org-publish)
+(setq org-publish-project-alist
+      '(
+    ("org-static"
+          :base-directory "~/nfs/firewall/Documents/org/"
+          :base-extension "css\\|js\\|png\\|jpg\\|gif\\|pdf\\|mp3\\|ogg\\|swf\\|php"
+          :publishing-directory "~/nfs/firewall/public_html/org-mobile/"
+          :recursive t
+          :publishing-function org-publish-attachment)
+
+
+     ("org-mobile"
+          :base-directory "~/nfs/firewall/Documents/org/"
+          :base-extension "org"
+          :publishing-directory "~/nfs/firewall/public_html/org-mobile/"
+          :recursive t
+          :publishing-function org-publish-org-to-html
+          :headline-levels 4             ; Just the default for this project.
+          :auto-preamble t
+          :auto-index t
+          :html-extension "php"
+          :index-filename "sitemap.org"
+          :index-title "Sitemap"
+      )
+
+    ("mobile" :components ("org-mobile" "org-static"))
+
+      ))
+
+#+END_SRC
+
+The next step is to tell org to include your php files in its
+generated html. I have two files that must be included:
+
+- mobile.php: contains the library detecting if your browser is
+mobile.
+- style_selector.php (shown below), which decides which style sheet to
+serve.
+
+I place these two files in the same directory as my other static
+files.
+
+*** style_selector.php
+    :PHP:
+  <?php    
+    // style_selector.php
+    // Detect different types of browsers and set the theme accordingly.
+    if (isMobileUser()) {
+        $stylesheet = '<link rel="stylesheet" type="text/css" href="http://www.wilkesley.net/~ian/org-mobile/css/org_mobile.css">';
+    } else {
+        $stylesheet = '<link rel="stylesheet" type="text/css" href="http://www.wilkesley.net/~ian/org-mobile/css/org.css">';
+    }
+
+    print $stylesheet;
+?>
+
+:END:
+
+The php code containing the style sheet detection needs to be placed
+between the exported page's <head> </head> tags. An easy way to
+accomplish this is to use org's #+STYLE: in buffer settings:
+
+#+STYLE: <?php
+#+STYLE: include_once("../css/mobile.php");
+#+STYLE: include_once("../css/style_selector.php");
+#+STYLE: ?>
+
+The web server will then place the appropriate style sheet html markup
+between the page's <head> tags.
+
+*** Customizing the Default Style Sheet.
+
+You can use the style sheet for [[http://orgmode.org//worg/worg.css][worg]] as a starting point for your
+customization. There are many customizations you can make to the
+style sheet to improve its readability on a mobile device. A very
+simple one is to make the main body single column and place the Table
+of Contents at the top of the page.
+
+#+BEGIN_EXAMPLE
+    body { margin: 10px 8% 10px 8%; font-family: Verdana;
+text-align: justify; font-size: 10pt; padding: 10px; line-height:
+1.2em; }
+
+
+  #table-of-contents {
+    float: top;
+    border: 1px solid #CCC;
+    max-width: 100%;
+    overflow: auto;
+  }
+#+END_EXAMPLE
+
+
+
+** Automating org html Publication.
+I have a cron job that publishes my org files to a web server every
+hour. The shell script is shown below. My org files are published to
+my local server, then rsynced to a remote server. Note that you
+probably want to password the directory on your web server holding
+your org files using an .htaccess directive.
+
+#+BEGIN_SRC emacs-shell
+  #!/bin/sh
+
+  # Publish files locally.
+  /usr/bin/emacs -batch -l ~/.emacs \
+  -eval '(publish-all)'
+
+  # Sync html to a remote web server
+  rsync -avz --delete-after --exclude=*~ ~/public_html/org/
+  ian@wilkesley.org:~/public_html/org/
+
+#+END_SRC
+
+The "publish-all" elisp function in the shell script is shown
+below. It just uses "org-publish-all" to publish all projects listed
+in "org-publish-project-alist". You can adjust this to only publish
+paticular projects.
+
+#+BEGIN_SRC emacs-lisp
+  (defun publish-all nil
+ "Publish org files."
+ (interactive)
+ (org-publish-all)
+)
+
+#+END_SRC
+
+An example .htaccess file to password protect the directory containing
+your org files is shown below. This assumes that you are using Apache
+as a web server. If at all possible you should use
+"Digest" as the AuthType as "Basic" sends your user name and passwords
+in plain text. To generate the AuthUserFile you need to use either
+htdigest (AuthType Digest) or htpasswd (AuthType Plain).
+
+#+BEGIN_SRC emacs-lisp
+  AuthName        "org Files"
+  AuthType        Digest
+  AuthUserFile    /etc/apache2/org.passwd
+  #AuthType       Basic
+  #AuthUsetFile    /etc/apache2/org_basic.passwd
+  Require         valid-user
+  Order           allow,deny
+  Satisfy         any
+#+END_SRC
+
+* On Line Services That Can Create rss Feeds from Data Sent Via IM and other Means.
+
+   There are a number of web services available that will accept input
+as voice messages, email, or via instant messaging. Many of these
+services can then create an rss feed from your input, which can be
+used to update an org file.
+
+   Whilst these services offer many facilities, for the org user they
+   are primarily of use in capturing data when away from your
+   computer. The captured data can then be automatically added to an
+   org file by using the site's rss feed of your data.
+
+   There are several services available and I have mentioned a couple
+   I have used below.
+
+** Reqall.
+   Reqall has a free "Standard" and a paid for "Pro" version with more
+   features. Using the Standard version you can input text via Email,
+   SMS and voice (using their voice recognition). See the web site for
+   [[http://www.reqall.com/about/compare_pro_standard][a comparison]]. You can create an rss feed of items that you store in
+   Reqall from your accounts Settings/Feed page. This will set a url
+   similar to
+   http://www.reqall.com/user/feeds/rss/2e02c08c4fcc1fd69e844e3 ,
+   which is your rss feed. A simplified example of my rss feed is
+   shown below.
+
+   Items are categorized as Note, Meeting or Task. The item
+   <pubDate> corresponds to the date and time that you added the item
+   to Reqall. Although Reqall allows you to add more date information
+   to tasks and meetings, this doesn't appear in the rss feed.
+
+   A sample of reqall's RSS feed is shown below.
+
+:XML:
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>reQall posts for Ian</title>
+    <link>http://www.reqall.com</link>
+    <atom:link href="http://www.reqall.com/user/feeds/rss/your_private_url" rel="self" type="application/rss+xml"/>
+    <description>reQall posts for Ian</description>
+    <language>en</language>
+    <copyright>Copyright QTech Inc.</copyright>
+    <webMaster>support@reqall.com (QTechInc Webmaster)</webMaster>
+    <category>Software</category>
+    <image>
+      <title>reQall posts for Ian</title>
+      <url>http://www.qtechinc.com/misc_images/reqall_rsslogo.gif</url>
+      <link>http://www.reqall.com</link>
+    </image>
+    <item>
+      <title>Note It's very hot in the car</title>
+      <link>http://www.reqall.com/web/posts</link>
+      <guid isPermaLink="false">7774703548</guid>
+      <category>Note</category>
+      <description>Note: Note its very hot in the car</description>
+      <pubDate>Sun, 20 Sep 2009 14:01:27 +0000</pubDate>
+    </item>
+    <item>
+      <title>Note sitting in swimming pool cafe in Oban</title>
+      <link>http://www.reqall.com/web/posts</link>
+      <guid isPermaLink="false">5050957756</guid>
+      <category>Note</category>
+      <description>Note: Note sitting in swimming pool cafe in Oban</description>
+      <pubDate>Wed, 26 Aug 2009 12:18:30 +0000</pubDate>
+    </item>
+    <item>
+      <title>Meet the book club on July 15 at 4:00 pm</title>
+      <link>http://www.reqall.com/web/posts</link>
+      <guid isPermaLink="false">2459439036</guid>
+      <category>Meeting</category>
+      <description>Meeting: Meet the book club on July 15 at 4:00 pm</description>
+      <pubDate>Mon, 23 Mar 2009 18:47:56 +0000</pubDate>
+      <dc:identifier>
+PENDING      </dc:identifier>
+    </item>
+    <item>
+      <title>This is a test task.</title>
+      <link>http://www.reqall.com/web/posts</link>
+      <guid isPermaLink="false">7766697916</guid>
+      <category>Task</category>
+      <description>Task: This is a test task.</description>
+      <pubDate>Mon, 21 Sep 2009 17:59:07 +0000</pubDate>
+      <dc:identifier>
+PENDING      </dc:identifier>
+    </item>
+    <item>
+      <title>Remind me to check oil tank.</title>
+      <link>http://www.reqall.com/web/posts</link>
+      <guid isPermaLink="false">7774707644</guid>
+      <category>Task</category>
+      <description>Task: Remind me to check oil tank.</description>
+      <pubDate>Sun, 20 Sep 2009 14:00:44 +0000</pubDate>
+    </item>
+    <item>
+      <title>Remember cancel premier inn bookimg</title>
+      <link>http://www.reqall.com/web/posts</link>
+      <guid isPermaLink="false">5050931132</guid>
+      <category>Task</category>
+      <description>Task: Remember cancel premier inn bookimg</description>
+      <pubDate>Wed, 26 Aug 2009 12:17:10 +0000</pubDate>
+    </item>
+
+      <title>reQall recognizes dates, times and certain words like '...</title>
+      <link>http://www.reqall.com/web/posts</link>
+      <guid isPermaLink="false">2456494012</guid>
+      <category>Task</category>
+      <description>Task: reQall recognizes dates, times and certain words like 'buy', 'note', and 'meeting'.</description>
+      <pubDate>Mon, 23 Mar 2009 10:12:27 +0000</pubDate>
+    </item>
+  </channel>
+</rss>
+:END:
+
+** Dial2Do.
+   [[http://www.dial2do.com][Dial2Do]] offers a similar set of features to Reqall. You can get rss
+   feeds for reminders, text and emails that you have sent to
+   Dial2Do. To find the rss feed url look in the My Activities tab and
+   there is an rss button next to each activity.
+
+   If the item has been created from a voice message, the original
+   recording is available from the url in the <enclosure> tag. The
+   overall structure of the file is similar to that generated by
+   Reqall, with the <pubDate> tag referring to the date the item was
+   created.
+
+
+** Updating an org File from an RSS Feed.
+
+*** Using org-feed.el
+   Org has a built in method for creating and changing entries from an
+   rss feed. The code is contained in org-feed.el. The module is
+   configured through a single variable `org-feed-alist'. With a setup
+   like the following:
+
+#+BEGIN_SRC emacs-lisp
+  (setq org-feed-alist
+          '(("ReQall"
+             "http://www.reqall.com/user/feeds/rss/a1b2c3....."
+             "~/org/feeds.org" "ReQall Entries")
+#+END_SRC
+
+   feeds can be updated using `M-x org-feed-update-all'. New entries
+   are collected and sub-headings created under the "Reqall Entries"
+   heading, in a file called "~/org-feeds.org". Each feed will normally
+   have its own heading, but it is also possible to store feeds in
+   drawers using the DRAW parameter.
+
+   In order to keep track of items that have been previously
+   downloaded org stores information in a draw called FEEDSTATUS under
+   the heading for that feed. You need to add FEEDSTATUS to the list
+   of drawers for files where org is writing rss feeds:
+
+#+BEGIN_EXAMPLE
+  #+DRAWERS: FEEDSTATUS
+#+END_EXAMPLE
+
+  There are many hooks in org-feed.el that allow you to trigger custom
+  actions when updating a feed. See the doctrings in org-feeds.el for
+  full details.
+
+org-feed.el
+
+*** org-reqall
+    An alternative method of importing rss feeds into and org file is
+    the python based [[http://github.com/geekinthesticks/org-reqall][org-reqall]] . This is based on Charles Cave's
+    [[http://members.optusnet.com.au/~charles57/GTD/orgnode.html][orgnode]] python library for parsing org files.
+
+    The script treats each category in the feed (eg. "Task", "Note",
+etc) separately and you can store them in different files if you wish.
+
+    The guid from each item in the feed is stored in
+~/.reqallguids. Each item in the feed is checked against the list of
+stored guids to ensure that it is only downloaded once.
+
+
+* iSilo.
+
+[[http://www.isilo.com][iSilo]] is a document reader which is available for many mobile
+devices. iSilo documents support many features of html, such as
+tables, css and images. iSilo is a useful way of getting read only
+access to your org files on your mobile device without requiring an
+Internet connection.
+
+*** Converting Documents to iSilo Format.
+You can convert text files and html to iSilo format using the freely
+available iSiloX converter. There is a gui version available for
+Windows, which will run in Linux using the wine emulator. There are
+also command line versions of iSiloX avaiable for Windows, Mac and various
+flavours of Linux/Unix.
+
+iSiloX reads its conversion information from an ixl file. This is in
+XML format and can easily be edited with a text editor. There are lots
+of possible options and I find it easier to create an initial ixl file
+using the iSilo Windows gui running under wine and then edit it by
+hand.
+
+The example below converts all the pages I have published on my site
+using org, but doesn't follow off site links. Of course you don't have
+to convert your whole site, but could just choose a subsection.
+
+I use the command line converter iSiloXC as part of a bash script
+which emails me the converted iSilo document. I can then download this
+using my smartphone, save it to the usb card and read it using the
+iSilo reader.
+
+#+BEGIN_SRC emacs-lisp
+  <?xml version="1.0"?>
+<iSiloXDocumentList>
+  <iSiloXDocument>
+    <Source>
+      <Sources>
+        <Path>http://www.wilkesley.net/~ian/org/index.html</Path>
+      </Sources>
+    </Source>
+    <Destination>
+      <Title>Ian's org Files</Title>
+      <Files>
+        <Path>Z:\home\ian\Documents\isilo\</Path>
+      </Files>
+    </Destination>
+    <LinkOptions>
+      <MaximumDepth value="3"/>
+      <FollowOffsite value="no"/>
+      <MaximumOffsiteDepth value="1"/>
+      <SubDirOnly value="yes"/>
+      <UnresolvedDetail value="include"/>
+    </LinkOptions>
+    <ImageOptions>
+      <AltText value="exclude"/>
+      <Images value="include"/>
+      <ResizeLargeImages value="yes"/>
+      <ImproveContrast value="yes"/>
+      <Dither value="yes"/>
+      <MaximumWidth value="144"/>
+      <MaximumHeight value="144"/>
+      <Compress value="yes"/>
+      <BitDepth1 value="exclude"/>
+      <BitDepth2 value="exclude"/>
+      <BitDepth4 value="exclude"/>
+      <BitDepth8 value="exclude"/>
+      <BitDepth16 value="include"/>
+      <LossyLevel value="none"/>
+      <LossyQuality value="75"/>
+    </ImageOptions>
+    <TableOptions>
+      <IgnoreTables value="no"/>
+      <AddSeparators value="no"/>
+      <UseMinimumDepth value="no"/>
+      <MinimumDepth value="1"/>
+      <UseMaximumBottomReach value="no"/>
+      <MaximumBottomReach value="1"/>
+      <UnfoldFullPageTables value="no"/>
+      <IgnorePixelWidths value="no"/>
+    </TableOptions>
+   <ColorOptions>
+      <BackgroundColors value="keep"/>
+      <TextColors value="keep"/>
+    </ColorOptions>
+    <MarginOptions>
+      <LeftRightMargins value="keep"/>
+      <LeftRightPadding value="keep"/>
+    </MarginOptions>
+    <SecurityOptions>
+      <Convert value="allow"/>
+      <CopyBeam value="allow"/>
+      <CopyAndPaste value="allow"/>
+      <Modify value="allow"/>
+      <Print value="allow"/>
+    </SecurityOptions>
+    <TextOptions>
+      <PreUseMonospaceFont value="yes"/>
+      <PreSingleLineBreaks value="KeepAll"/>
+      <ProcessLineBreaks value="yes"/>
+      <ConvertSingleLineBreaks value="no"/>
+      <Preformatted value="no"/>
+      <UseMonospaceFont value="no"/>
+      <MonospaceFontSize value="10"/>
+      <TabStopWidth value="8"/>
+    </TextOptions>
+    <DocumentOptions>
+      <PageBounds value="hard"/>
+      <UseDefaultCategory value="no"/>
+      <HomePageNumber value="1"/>
+      <OpenHomePageOnDateChange value="no"/>
+    </DocumentOptions>
+    <Bookmarks>
+      <Document>
+        <UseFile value="no"/>
+        <UseNamedAnchors value="no"/>
+        <NamedAnchorType value="WordWebPage"/>
+        <UseIncludeFilter value="no"/>
+        <UseExcludeFilter value="no"/>
+      </Document>
+    </Bookmarks>
+    <LastConversion>
+      <Date>2009/09/12 09:49:09</Date>
+      <Size value="1207363"/>
+      <Status>Successful conversion</Status>
+    </LastConversion>
+  </iSiloXDocument>
+</iSiloXDocumentList>
+
+
+#+END_SRC
+
+
+* org For the iPhone.
+
+
+Richard Moreland and Carsten are currently working on a free app for
+the iPhone. A [[http://ncogni.to/mobileorg-demo1.mov][teaser]] video is available.
+
+* Running Emacs on Mobile Devices.
+  Emacs is not currently available on Symbian devices. However,
+  Nokia's Maemo platform does have a native version.
+** Emacs on Maemo Devices.
+You can run Emacs natively on Maemo devices. The Maemo port is
+available from
+http://danielsz.freeshell.org/code/mine/emacs-for-maemo/index.shtml .
+
+** Emacs on Android.
+There are a number of [[http://www.emacswiki.org/emacs/EmacsOnAndroid][hacks]] for installing Debian and Emacs on
+Android phones. However, these involve you re-flashing your ROM with a
+custom version. For the moment it's probably safer to install an ssh
+client and run Emacs remotely on your server.
