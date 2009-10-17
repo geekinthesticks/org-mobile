@@ -771,7 +771,8 @@ iSilo reader.
 
 
 Richard Moreland and Carsten are currently working on a free app for
-the iPhone. A [[http://ncogni.to/mobileorg-demo1.mov][teaser]] video is available.
+the iPhone, called MobileOrg. The app allows both editing and viewing
+org files on your iPhone. You can find out more from their [[http://mobileorg.ncogni.to][web]] site.
 
 * Running Emacs on Mobile Devices.
   Emacs is not currently available on Symbian devices. However,
